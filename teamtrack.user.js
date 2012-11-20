@@ -20,32 +20,63 @@ function injectScripts(callback) {
 
 function main() {
     console.log("TeamTrack script running");
+
+    // insert stylesheet
+    $(document.body).append($("<style>", {
+        text: ".listrow-header { background-color: grey; font-weight: bold; }"
+    }));
+
+    // insert header row
+    $header = $("<tr>");
+    console.log($(".listrow0"));
+    $(".listrow0").first().before($header);
+    $("<th>", {
+        colspan: 3,
+        class: "listrow-header"
+    }).appendTo($header);
+    $("<th>", {
+        text: "Priority",
+        class: "listrow-header"
+    }).appendTo($header);
+    $("<th>", {
+        text: "Severity",
+        class: "listrow-header"
+    }).appendTo($header);
+    $("<th>", {
+        text: "Description",
+        class: "listrow-header"
+    }).appendTo($header);
+
+    // do ajax queries and get data for each item in the list
     $(".listrow0").each(function () {
         var url = "tmtrack.dll?IssuePage&TableId=1&RecordId={id}&Template=viewbody";
         var href = $("a", this).attr("href");
         var split = href.split(/\?|&/);
         var recordId;
 
+        // extract RecordID from bug url
         split.forEach(function (item) {
             if (/RecordId/.test(item)) {
                 recordId = item.split("=")[1];
             }
         });
 
+        // function for adding the status columns
         var $node = $("td:nth-child(4)", this);
         function setStatus(priority, severity) {
             $node.before($("<td>", {
                 text: priority,
-                "class": "listField3",
+                class: "listField3",
                 valign: "top"
             }));
             $node.before($("<td>", {
                 text: severity,
-                "class": "listField3",
+                class: "listField3",
                 valign: "top"
             }));
         }
 
+        // do the actual ajax call
         if (recordId) {
             url = url.replace("{id}", recordId);
             $.ajax({
@@ -53,6 +84,8 @@ function main() {
                 dataType: "html",
                 success: function (data) {
                     var priority, severity;
+
+                    // find priority and severity fields
                     $(".ttfieldname", data).each(function () {
                         if (/Severity/.test($(this).text())) {
                             severity = $(this).next().text().trim();
@@ -60,6 +93,8 @@ function main() {
                             priority = $(this).next().text().trim();
                         }
                     });
+
+                    // set status
                     setStatus(priority, severity);
                 }
             });
