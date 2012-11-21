@@ -5,6 +5,7 @@
 // @match http://*/tmtrack/tmtrack.dll?ReportPage*
 // ==/UserScript==
 
+// load the jquery and jquery ui scripts
 function injectScripts(callback) {
     var jquery = document.createElement('script');
     jquery.type = 'text/javascript';
@@ -24,106 +25,111 @@ function injectScripts(callback) {
 }
 
 function main() {
+    function insertStylesheets() {
 
-    // insert stylesheet
-    $(document.body).append($("<style>", {
-        text:
-            ".listrow-header { " +
-                "background-color: grey;" +
-                "font-weight: bold;" +
-            "}" +
-            ".tooltip { " +
-                "background-color: #ddd;" +
-                "border: 1px solid black;" +
-                "border-radius: 5px;" +
-                "font-size: 0.75em;" +
-                "max-width: 75%;" +
-            "}"
-    }));
+        // custom styling
+        $(document.body).append($("<style>", {
+            text:
+                ".listrow-header { " +
+                    "background-color: grey;" +
+                    "font-weight: bold;" +
+                "}" +
+                ".mytooltip { " +
+                    "background-color: #ddd;" +
+                    "background-image: none;" +
+                    "font-size: 0.9em;" +
+                    "max-width: 50%;" +
+                "}"
+        }));
 
-    // insert header row
-    $header = $("<tr>");
-    $(".listrow0").first().before($header);
-    $("<th>", {
-        colspan: 3,
-        class: "listrow-header"
-    }).appendTo($header);
-    $("<th>", {
-        text: "Priority",
-        class: "listrow-header"
-    }).appendTo($header);
-    $("<th>", {
-        text: "Severity",
-        class: "listrow-header"
-    }).appendTo($header);
-    $("<th>", {
-        text: "Description",
-        class: "listrow-header"
-    }).appendTo($header);
+        // jquery ui stylesheet
+        $(document.head).append($("<link>", {
+            rel: "stylesheet",
+            href: "http://code.jquery.com/ui/1.9.1/themes/base/jquery-ui.css"
+        }));
+    }
+
+    // inserts the table header for the issue list view
+    function insertHeader() {
+        $header = $("<tr>");
+        $(".listrow0").first().before($header);
+        $("<th>", {
+            colspan: 3,
+            class: "listrow-header"
+        }).appendTo($header);
+        $("<th>", {
+            text: "Priority",
+            class: "listrow-header"
+        }).appendTo($header);
+        $("<th>", {
+            text: "Severity",
+            class: "listrow-header"
+        }).appendTo($header);
+        $("<th>", {
+            text: "Description",
+            class: "listrow-header"
+        }).appendTo($header);
+    }
+
+    function initTooltip($node, tooltipText) {
+        $node.tooltip({
+            delay: 2000,
+            items: "a",
+            position: {
+                my: "left+15 center",
+                at: "right center",
+                within: document.body
+            },
+            tooltipClass: "mytooltip",
+            content: tooltipText
+        });
+    }
+
+    function insertColumns($node, priority, severity) {
+        $node.before($("<td>", {
+            text: priority,
+            class: "listField3",
+            valign: "top"
+        }));
+        $node.before($("<td>", {
+            text: severity,
+            class: "listField3",
+            valign: "top"
+        }));
+    }
+
+    /*
+     * Main code starts here
+     */
+    insertStylesheets();
+
+    insertHeader();
 
     // do ajax queries and get data for each item in the list
     $(".listrow0").each(function () {
+        var $anchorTag = $("a", this);
+        var $descCell = $("td:nth-child(4)", this);
         var url = "tmtrack.dll?IssuePage&TableId=1&RecordId={id}&Template=viewbody";
-        var $anchor = $("a", this);
-        var href = $anchor.attr("href");
-        var split = href.split(/\?|&/);
         var recordId;
 
         // extract RecordID from bug url
-        split.forEach(function (item) {
+        $anchorTag.attr("href").split(/\?|&/).forEach(function (item) {
             if (/RecordId/.test(item)) {
                 recordId = item.split("=")[1];
+                return false;
             }
         });
 
-        // function for adding the status columns
-        var $node = $("td:nth-child(4)", this);
-        function setStatus(priority, severity) {
-            $node.before($("<td>", {
-                text: priority,
-                class: "listField3",
-                valign: "top"
-            }));
-            $node.before($("<td>", {
-                text: severity,
-                class: "listField3",
-                valign: "top"
-            }));
-        }
-
-        // do the actual ajax call
+        // modify the table row if we extracted the RecordID param
         if (recordId) {
             url = url.replace("{id}", recordId);
 
-            // hook up tooltip
-            $anchor.tooltip({
-                delay: 2000,
-                items: "a",
-                content: function () {
-                    var result;
-
-                    $.ajax({
-                        url: url,
-                        dataType: "html",
-                        async: false,
-                        success: function (data) {
-                            $(".ttfieldname", data).each(function () {
-                                if (/Description/.test($(this).text())) {
-                                    result = $(this).next().html();
-                                    return false;
-                                }
-                            });
-                        }
-                    });
-                    return "<div class='tooltip'>" + result + "</div>";
-                }
-            });
-
+            // lookup the interesting fields for each issue
             $.ajax({
                 url: url,
                 dataType: "html",
                 success: function (data) {
-                    var priority, severity;
+                    var priority, severity, description;
 
                     // find priority and severity fields
                     $(".ttfieldname", data).each(function () {
@@ -131,11 +137,15 @@ function main() {
                             severity = $(this).next().text().trim();
                         } else if (/Priority/.test($(this).text())) {
                             priority = $(this).next().text().trim();
+                        } else if (/Description/.test($(this).text())) {
+                            description = $(this).next().html();
                         }
+
                     });
 
                     // set status
-                    setStatus(priority, severity);
+                    insertColumns($descCell, priority, severity);
+                    initTooltip($anchorTag, description);
                 }
             });
         }
