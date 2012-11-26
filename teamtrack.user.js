@@ -49,28 +49,6 @@ function main() {
         }));
     }
 
-    // inserts the table header for the issue list view
-    function insertHeader() {
-        $header = $("<tr>");
-        $(".listrow0").first().before($header);
-        $("<th>", {
-            colspan: 3,
-            class: "listrow-header"
-        }).appendTo($header);
-        $("<th>", {
-            text: "Priority",
-            class: "listrow-header"
-        }).appendTo($header);
-        $("<th>", {
-            text: "Severity",
-            class: "listrow-header"
-        }).appendTo($header);
-        $("<th>", {
-            text: "Description",
-            class: "listrow-header"
-        }).appendTo($header);
-    }
-
     function initTooltip($node, tooltipText) {
         $node.tooltip({
             delay: 2000,
@@ -85,30 +63,14 @@ function main() {
         });
     }
 
-    function insertColumns($node, priority, severity) {
-        $node.before($("<td>", {
-            text: priority,
-            class: "listField3",
-            valign: "top"
-        }));
-        $node.before($("<td>", {
-            text: severity,
-            class: "listField3",
-            valign: "top"
-        }));
-    }
-
     /*
      * Main code starts here
      */
     insertStylesheets();
 
-    insertHeader();
-
     // do ajax queries and get data for each item in the list
-    $(".listrow0").each(function () {
-        var $anchorTag = $("a", this);
-        var $descCell = $("td:nth-child(4)", this);
+    $("a[href*=IssuePage]").each(function () {
+        var $anchorTag = $(this);
         var url = "tmtrack.dll?IssuePage&TableId=1&RecordId={id}&Template=viewbody";
         var recordId;
 
@@ -133,18 +95,13 @@ function main() {
 
                     // find priority and severity fields
                     $(".ttfieldname", data).each(function () {
-                        if (/Severity/.test($(this).text())) {
-                            severity = $(this).next().text().trim();
-                        } else if (/Priority/.test($(this).text())) {
-                            priority = $(this).next().text().trim();
-                        } else if (/Description/.test($(this).text())) {
+                        if (/Description/.test($(this).text())) {
                             description = $(this).next().html();
                         }
 
                     });
 
                     // set status
-                    insertColumns($descCell, priority, severity);
                     initTooltip($anchorTag, description);
                 }
             });
