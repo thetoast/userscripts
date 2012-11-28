@@ -93,13 +93,91 @@ function main() {
                 success: function (data) {
                     var priority, severity, description;
 
-                    // find priority and severity fields
+                    // find issue field values
                     $(".ttfieldname", data).each(function () {
                         if (/Description/.test($(this).text())) {
                             description = $(this).next().html();
                         }
-
                     });
+
+                    // look for attachments
+                    var hasAttachments = false;
+                    var $attchSection;
+                    $(".sectionLabel", data).each(function () {
+                        if ($(this).text() === "Attachments") {
+                            hasAttachments = true;
+                            $attchSection = $(this);
+                        }
+                    });
+
+                    if (hasAttachments) {
+                        var $attch = $("<a>", {
+                            text: "Attch",
+                            href: "#"
+                        });
+                        $anchorTag.after($attch);
+                        $anchorTag.after("&nbsp;&nbsp;&nbsp;&nbsp;");
+
+                        var $pics = $("img[src*=AttachmentPage]", $attchSection.parent().parent().next());
+
+                        $attch.tooltip({
+                            items: "a",
+                            position: {
+                                my: "left+15 center",
+                                at: "right center",
+                                within: document.body
+                            },
+                            tooltipClass: "mytooltip",
+                            content: function () {
+                                // create a div to hold our stuff
+                                var $adiv = $("<div>", {
+                                    html: "Attachments: <br />"
+                                });
+
+                                // insert a tag for each picture attachment
+                                $pics.each(function () {
+                                    var src = $(this).attr("src");
+                                    var $a = $("<a>", {
+                                        text: src,
+                                        href: "#"
+                                    }).click(function () {
+                                        if ($(this).data("img-open")) {
+                                            $(this).data("img-open", false);
+                                            $(this).next().remove();
+                                        } else {
+                                            $(this).data("img-open", true);
+                                            $(this).after($("<img>", {
+                                                src: src
+                                            }));
+                                        }
+                                    });
+                                    $adiv.append($a);
+                                    $adiv.append("<br />");
+                                });
+
+                                // insert a close link
+                                $adiv.append("<br />");
+                                $adiv.append($("<a>", {
+                                    text: "Close",
+                                    href: "#"
+                                }).click(function () {
+                                    console.log("closing tooltip");
+                                    $attch.trigger("click");
+                                }));
+
+                                return $adiv;
+                            },
+                            disabled: true
+                        }).click(function () {
+                            if ($(this).data("tooltip-open")) {
+                                $(this).tooltip("close");
+                                $(this).data("tooltip-open", false);
+                            } else {
+                                $(this).tooltip("open");
+                                $(this).data("tooltip-open", true);
+                            }
+                        });
+                    }
 
                     // set status
                     initTooltip($anchorTag, description);
